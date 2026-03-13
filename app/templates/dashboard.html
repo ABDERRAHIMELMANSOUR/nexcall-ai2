@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Dashboard</h1>
+    <p>Vue d'ensemble en temps réel</p>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Actualiser</button>
+    <button class="btn btn-jade btn-sm" onclick="openSimModal()">☎ Simuler un appel</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- System health banner -->
+  <div id="health-banner" class="alert alert-jade" style="margin-bottom:22px">
+    <div class="spinner"></div>
+    <span>Vérification du système...</span>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-card jade">
+      <div class="stat-label">Total Appels</div>
+      <div class="stat-value" id="s-total">—</div>
+      <div class="stat-sub">Tous statuts</div>
+    </div>
+    <div class="stat-card jade">
+      <div class="stat-label">Terminés</div>
+      <div class="stat-value" id="s-done">—</div>
+      <div class="stat-sub">Appels complets</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Leads totaux</div>
+      <div class="stat-value" id="s-leads">—</div>
+      <div class="stat-sub">Qualifiés & plus</div>
+    </div>
+    <div class="stat-card crimson">
+      <div class="stat-label">Leads chauds 🔥</div>
+      <div class="stat-value" id="s-hot">—</div>
+      <div class="stat-sub">Score ≥ 80</div>
+    </div>
+    <div class="stat-card sky">
+      <div class="stat-label">Score moyen</div>
+      <div class="stat-value" id="s-avgscore" style="font-size:22px">—</div>
+      <div class="stat-sub">Tous les leads</div>
+    </div>
+    <div class="stat-card violet">
+      <div class="stat-label">Durée moy.</div>
+      <div class="stat-value" id="s-avgdur" style="font-size:22px">—</div>
+      <div class="stat-sub">Par appel terminé</div>
+    </div>
+  </div>
+
+  <!-- Two column grid -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+    <!-- Recent calls -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Appels récents</span>
+        <a href="/calls" class="btn btn-outline btn-xs">Voir tout →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Appelant</th>
+              <th>Statut</th>
+              <th>IVR</th>
+              <th>Heure</th>
+            </tr>
+          </thead>
+          <tbody id="tb-calls">
+            <tr><td colspan="4" style="text-align:center;padding:24px"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Hot leads -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Leads prioritaires</span>
+        <a href="/leads" class="btn btn-outline btn-xs">Voir tout →</a>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Contact</th>
+              <th>Intérêt</th>
+              <th>Score</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody id="tb-leads">
+            <tr><td colspan="4" style="text-align:center;padding:24px"><div class="spinner"></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ Simulateur Modal ════════════════════════════════════════════ -->
+<div class="modal-overlay" id="sim-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <span class="modal-title">☎ Simuler un appel entrant</span>
+      <button class="modal-close" onclick="closeSimModal()">✕</button>
+    </div>
+
+    <div class="alert alert-jade" style="margin-bottom:18px;font-size:11.5px">
+      Teste l'agent IA sans Ringover. Parfait pour valider la configuration OpenAI.
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Numéro appelant</label>
+      <input class="form-input" id="sim-phone" value="+33600000000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Touche IVR</label>
+      <select class="form-select" id="sim-ivr">
+        <option value="1">1 — Assurance Auto</option>
+        <option value="2">2 — Assurance Santé</option>
+        <option value="3">3 — Parler à un conseiller</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Message du client</label>
+      <textarea class="form-textarea" id="sim-msg">Bonjour, je cherche une assurance auto pour mon nouveau véhicule. Mon budget est d'environ 80 euros par mois. C'est assez urgent.</textarea>
+    </div>
+
+    <div id="sim-result" style="display:none;margin-bottom:12px"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-jade" id="sim-btn" onclick="runSim()">▶ Lancer la simulation</button>
+      <button class="btn btn-ghost" onclick="closeSimModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function loadAll() {
+  // Health check
+  try {
+    const st = await api('/api/config/status');
+    const banner = document.getElementById('health-banner');
+    const ro = st.ringover, oa = st.openai;
+    if (ro.connected && oa.configured) {
+      banner.className = 'alert alert-jade';
+      banner.innerHTML = '✓ Système opérationnel — Ringover connecté · OpenAI configuré';
+    } else {
+      const issues = [];
+      if (!ro.configured) issues.push('Ringover non configuré');
+      else if (!ro.connected) issues.push('Ringover non joignable');
+      if (!oa.configured) issues.push('OpenAI non configuré');
+      banner.className = 'alert alert-amber';
+      banner.innerHTML = `⚠ ${issues.join(' · ')} — <a href="/configuration" style="color:inherit;text-decoration:underline">Configurer →</a>`;
+    }
+  } catch {}
+
+  // Stats
+  try {
+    const [cs, ls] = await Promise.all([api('/api/calls/stats'), api('/api/leads/stats')]);
+    document.getElementById('s-total').textContent = cs.total;
+    document.getElementById('s-done').textContent = cs.completed;
+    document.getElementById('s-leads').textContent = ls.total;
+    document.getElementById('s-hot').textContent = ls.hot;
+    document.getElementById('s-avgscore').textContent = ls.avg_score;
+    document.getElementById('s-avgdur').textContent = fDur(cs.avg_duration);
+  } catch {}
+
+  // Recent calls
+  try {
+    const calls = await api('/api/calls?limit=8');
+    const tb = document.getElementById('tb-calls');
+    if (!calls.length) {
+      tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">☎</div><p>Aucun appel pour l\'instant</p></div></td></tr>';
+    } else {
+      tb.innerHTML = calls.map(c => `
+        <tr>
+          <td class="phone-num">${c.caller_number}</td>
+          <td>${badgeStatus(c.status)}</td>
+          <td style="font-size:11px;color:var(--text3)">${c.ivr_choice || '—'}</td>
+          <td style="font-size:11px;color:var(--text3)">${fDate(c.created_at)}</td>
+        </tr>
+      `).join('');
+    }
+  } catch {}
+
+  // Hot leads
+  try {
+    const leads = await api('/api/leads?limit=8');
+    const tbl = document.getElementById('tb-leads');
+    if (!leads.length) {
+      tbl.innerHTML = '<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">👤</div><p>Aucun lead pour l\'instant</p></div></td></tr>';
+    } else {
+      tbl.innerHTML = leads.map(l => `
+        <tr>
+          <td>
+            <div style="font-weight:600;font-size:13px">${l.full_name}</div>
+            <div class="phone-num">${l.phone}</div>
+          </td>
+          <td style="font-size:11px">${l.interest ? l.interest.replace('_',' ') : '—'}</td>
+          <td>${fScore(l.score)}</td>
+          <td>${badgeLead(l.status)}</td>
+        </tr>
+      `).join('');
+    }
+  } catch {}
+}
+
+function openSimModal()  { document.getElementById('sim-modal').classList.add('open'); }
+function closeSimModal() { document.getElementById('sim-modal').classList.remove('open'); }
+
+async function runSim() {
+  const btn = document.getElementById('sim-btn');
+  const rd  = document.getElementById('sim-result');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> En cours...';
+  rd.style.display = 'none';
+
+  try {
+    const r = await api('/api/calls/simulate', {
+      method: 'POST',
+      body: JSON.stringify({
+        caller_number: document.getElementById('sim-phone').value,
+        ivr_digit:     document.getElementById('sim-ivr').value,
+        message:       document.getElementById('sim-msg').value,
+      })
+    });
+    rd.style.display = 'block';
+    rd.className = 'alert alert-jade';
+    rd.innerHTML = `
+      <div>
+        <strong>✓ Simulation réussie !</strong>
+        <div style="margin-top:8px;font-size:12px;line-height:1.7">
+          <div><b>IVR sélectionné :</b> ${r.ivr_choice || '—'}</div>
+          <div><b>Réponse IA :</b> ${r.ai_response}</div>
+          ${r.lead_data ? `<div><b>Score lead :</b> ${r.lead_data.score} · ${r.lead_data.interest || ''}</div>` : ''}
+        </div>
+      </div>
+    `;
+    toast('Simulation terminée avec succès !', 'jade');
+    setTimeout(loadAll, 600);
+  } catch(e) {
+    rd.style.display = 'block';
+    rd.className = 'alert alert-crimson';
+    rd.textContent = `Erreur : ${e.message}`;
+    toast(e.message, 'crimson');
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '▶ Lancer la simulation';
+}
+
+loadAll();
+setInterval(loadAll, 30000);
+</script>
+{% endblock %}
