@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<!--
+  NexCall AI — Dashboard standalone (sans Jinja2)
+  Utilisable directement dans un browser ou intégré dans n'importe quel projet.
+  Remplacez les appels API fetch() par vos propres endpoints si besoin.
+-->
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — NexCall AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/nexcall.css">
+  <!-- Ou via CDN Tailwind si pas de fichier CSS local :
+  <script src="https://cdn.tailwindcss.com"></script> -->
+</head>
+<body>
+
+<div class="nx-app">
+
+  <!-- TOP BAR -->
+  <header class="nx-topbar">
+    <div class="nx-logo">
+      <div class="nx-logo-icon">🎯</div>
+      <div class="nx-logo-name">Nex<em>Call</em> AI</div>
+    </div>
+    <div class="nx-divider"></div>
+    <div class="nx-status">
+      <div class="nx-status-dot"></div>
+      <span>Système opérationnel</span>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+      <div style="font-family:monospace;font-size:11px;color:var(--text3)" id="nx-clock"></div>
+      <div style="width:32px;height:32px;background:linear-gradient(135deg,#1e40af,#7c3aed);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff">A</div>
+    </div>
+  </header>
+
+  <div class="nx-body">
+
+    <!-- SIDEBAR -->
+    <aside class="nx-sidebar">
+      <a href="/" class="nx-nav-link active">
+        <span class="nx-nav-icon">📊</span>Dashboard
+      </a>
+      <a href="/calls" class="nx-nav-link">
+        <span class="nx-nav-icon">📞</span>Appels
+      </a>
+      <a href="/leads" class="nx-nav-link">
+        <span class="nx-nav-icon">🎯</span>Leads
+      </a>
+      <a href="/campaigns" class="nx-nav-link">
+        <span class="nx-nav-icon">🚀</span>Campagnes
+      </a>
+      <a href="/config" class="nx-nav-link">
+        <span class="nx-nav-icon">⚙️</span>Configuration
+      </a>
+      <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border)">
+        <a href="/docs" class="nx-nav-link">
+          <span class="nx-nav-icon">📖</span>API Docs
+        </a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="nx-main">
+      <div class="nx-content">
+
+        <!-- Page header -->
+        <div class="nx-page-header">
+          <div>
+            <h1 class="nx-page-title">Dashboard</h1>
+            <p class="nx-page-sub">Vue d'ensemble de votre centre d'appels IA</p>
+          </div>
+          <div class="nx-page-actions">
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-ghost btn-sm" id="btn-7d"  onclick="setPeriod(7)">7j</button>
+              <button class="btn btn-primary btn-sm" id="btn-14d" onclick="setPeriod(14)">14j</button>
+              <button class="btn btn-ghost btn-sm" id="btn-30d" onclick="setPeriod(30)">30j</button>
+            </div>
+            <a href="/campaigns/new" class="btn btn-primary">+ Campagne</a>
+          </div>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid" style="margin-bottom:20px">
+          <div class="kpi-card" style="--kpi-accent:#22c55e">
+            <div class="kpi-icon" style="background:rgba(34,197,94,.1)">📞</div>
+            <div class="kpi-label">Total Appels</div>
+            <div class="kpi-value" id="k-total">—</div>
+            <div class="kpi-sub"><span id="k-today">—</span> aujourd'hui</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent:#3b82f6">
+            <div class="kpi-icon" style="background:rgba(59,130,246,.1)">✅</div>
+            <div class="kpi-label">Appels Réussis</div>
+            <div class="kpi-value" id="k-done">—</div>
+            <div class="kpi-sub"><span id="k-rate">—</span>% succès</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent:#f97316">
+            <div class="kpi-icon" style="background:rgba(249,115,22,.1)">🎯</div>
+            <div class="kpi-label">Leads Générés</div>
+            <div class="kpi-value" id="k-leads">—</div>
+            <div class="kpi-sub"><span id="k-hot">—</span> 🔥 chauds</div>
+          </div>
+          <div class="kpi-card" style="--kpi-accent:#a855f7">
+            <div class="kpi-icon" style="background:rgba(168,85,247,.1)">⏱️</div>
+            <div class="kpi-label">Durée Moyenne</div>
+            <div class="kpi-value" id="k-dur">—</div>
+            <div class="kpi-sub">par appel</div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Volume d'appels</span>
+              <span style="font-size:11px;color:var(--text3)" id="chart-lbl">7 derniers jours</span>
+            </div>
+            <div style="padding:16px">
+              <div class="bar-chart" id="bar-chart" style="height:80px"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Appels récents</span></div>
+            <div style="padding:0 16px 8px" id="recent-mini"></div>
+          </div>
+        </div>
+
+        <!-- Calls table -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Derniers appels</span>
+            <a href="/calls" style="font-size:12px;color:var(--brand);text-decoration:none">Voir tout →</a>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="nx-table">
+              <thead><tr>
+                <th>Numéro</th><th>Type</th><th>Statut</th>
+                <th>Intention</th><th>Durée</th><th>Date</th>
+              </tr></thead>
+              <tbody id="dash-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="nx-toast" id="nx-toast"></div>
+
+<script src="/static/js/nexcall.js"></script>
+<script>
+let period = 7;
+
+function setPeriod(d) {
+  period = d;
+  ['7','14','30'].forEach(n => {
+    document.getElementById(`btn-${n}d`).className =
+      n == d ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+  });
+  document.getElementById('chart-lbl').textContent = `${d} derniers jours`;
+  loadDashboard();
+}
+
+async function loadDashboard() {
+  const [stats, calls] = await Promise.all([
+    apiGet(`/api/calls/stats?days=${period}`),
+    apiGet('/api/calls/?limit=8'),
+  ]);
+
+  if (stats) {
+    document.getElementById('k-total').textContent = fmtNumber(stats.total_calls);
+    document.getElementById('k-today').textContent = stats.calls_today ?? 0;
+    document.getElementById('k-done').textContent  = fmtNumber(stats.completed_calls);
+    document.getElementById('k-rate').textContent  = stats.success_rate ?? 0;
+    document.getElementById('k-leads').textContent = fmtNumber(stats.total_leads);
+    document.getElementById('k-hot').textContent   = stats.hot_leads ?? 0;
+    document.getElementById('k-dur').textContent   = fmtDur(stats.avg_duration_sec);
+    renderBarChart('bar-chart', stats.daily_calls);
+  }
+
+  if (calls?.calls) {
+    // Mini list
+    document.getElementById('recent-mini').innerHTML = calls.calls.slice(0, 5).map(c => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:16px">${c.direction === 'inbound' ? '📥' : '📤'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${fmtPhone(c.phone_number)}</div>
+          <div style="font-size:10px;color:var(--text3)">${fmtDate(c.started_at)}</div>
+        </div>
+        ${statusBadge(c.status)}
+      </div>`).join('') || '<div style="padding:16px;color:var(--text3);font-size:13px">Aucun appel</div>';
+
+    // Table
+    document.getElementById('dash-tbody').innerHTML = calls.calls.map(c => `
+      <tr>
+        <td class="col-mono">${fmtPhone(c.phone_number)}</td>
+        <td><span class="badge ${c.call_type === 'ai_agent' ? 'badge-purple' : 'badge-blue'}">${c.call_type === 'ai_agent' ? '🤖 IA' : '📋 IVR'}</span></td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${intentBadge(c.intent)}</td>
+        <td class="col-mono">${fmtDur(c.duration_seconds)}</td>
+        <td class="col-dim">${fmtDate(c.started_at)}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:32px;color:var(--text3)">Aucun appel</td></tr>';
+  }
+}
+
+// Auto-refresh every 30s
+const refresher = new AutoRefresh(loadDashboard, 30000);
+refresher.start();
+loadDashboard();
+</script>
+</body>
+</html>

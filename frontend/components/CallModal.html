@@ -1,0 +1,118 @@
+<!--
+  COMPOSANT : Modale Détail d'Appel
+  Usage : copiez ce bloc, appelez openCallModal(callId, phone, status, duration)
+  Dépendances : nexcall.css, nexcall.js
+  API endpoint : /api/calls/{call_id}/detail
+-->
+
+<div class="modal-overlay" id="call-detail-modal">
+  <div class="modal modal-lg">
+
+    <div class="modal-header">
+      <span class="modal-title">📞 Détail de l'appel</span>
+      <button class="modal-close" onclick="closeModal('call-detail-modal')">×</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- 3 info cards -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+        <div class="card-sm" style="padding:13px">
+          <div class="form-label" style="margin-bottom:4px">Numéro</div>
+          <div style="font-family:monospace;font-size:14px;font-weight:700" id="cdm-phone">—</div>
+        </div>
+        <div class="card-sm" style="padding:13px">
+          <div class="form-label" style="margin-bottom:4px">Statut</div>
+          <div id="cdm-status">—</div>
+        </div>
+        <div class="card-sm" style="padding:13px">
+          <div class="form-label" style="margin-bottom:4px">Durée</div>
+          <div style="font-family:monospace;font-size:14px;font-weight:700" id="cdm-duration">—</div>
+        </div>
+      </div>
+
+      <!-- Loading indicator -->
+      <div id="cdm-loading" style="text-align:center;padding:24px;color:var(--text3)">
+        <div style="font-size:24px;margin-bottom:8px;animation:spin 1s linear infinite;display:inline-block">⟳</div>
+        <div style="font-size:13px">Chargement…</div>
+      </div>
+
+      <!-- IA Summary -->
+      <div id="cdm-summary-section" style="display:none;margin-bottom:16px">
+        <div class="form-label" style="margin-bottom:8px">🤖 Résumé IA</div>
+        <div class="card-sm" style="padding:14px;font-size:13px;line-height:1.6;color:var(--text2)" id="cdm-summary"></div>
+      </div>
+
+      <!-- Transcript -->
+      <div id="cdm-transcript-section" style="display:none">
+        <div class="form-label" style="margin-bottom:10px">💬 Transcript de la conversation</div>
+        <div class="bubble-wrap" style="max-height:340px;overflow-y:auto;padding-right:8px" id="cdm-transcript"></div>
+      </div>
+
+      <!-- No data -->
+      <div id="cdm-empty" style="display:none;text-align:center;padding:20px;color:var(--text3);font-size:13px">
+        Aucun transcript disponible pour cet appel.
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('call-detail-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+</style>
+
+<script>
+async function openCallModal(callId, phone, status, duration) {
+  // Fill basic info immediately
+  document.getElementById('cdm-phone').textContent    = phone || '—';
+  document.getElementById('cdm-status').innerHTML     = statusBadge(status);
+  document.getElementById('cdm-duration').textContent = fmtDur(duration);
+
+  // Reset sections
+  ['cdm-loading','cdm-summary-section','cdm-transcript-section','cdm-empty'].forEach(id => {
+    document.getElementById(id).style.display = 'none';
+  });
+  document.getElementById('cdm-loading').style.display = 'block';
+  openModal('call-detail-modal');
+
+  if (!callId || callId === 'null') {
+    document.getElementById('cdm-loading').style.display = 'none';
+    document.getElementById('cdm-empty').style.display   = 'block';
+    return;
+  }
+
+  const data = await apiGet(`/api/calls/${callId}/detail`);
+  document.getElementById('cdm-loading').style.display = 'none';
+
+  if (!data) {
+    document.getElementById('cdm-empty').style.display = 'block';
+    return;
+  }
+
+  // AI Summary
+  if (data.ai_summary) {
+    document.getElementById('cdm-summary').textContent      = data.ai_summary;
+    document.getElementById('cdm-summary-section').style.display = 'block';
+  }
+
+  // Transcript
+  if (data.transcript?.length) {
+    document.getElementById('cdm-transcript-section').style.display = 'block';
+    document.getElementById('cdm-transcript').innerHTML = data.transcript.map(m => {
+      const isAgent = m.role === 'assistant';
+      return `
+        <div class="bubble ${isAgent ? 'agent' : 'user'}">
+          <div class="bubble-avatar">${isAgent ? '🤖' : '👤'}</div>
+          <div class="bubble-text">${escHtml(m.content)}</div>
+        </div>`;
+    }).join('');
+  } else {
+    document.getElementById('cdm-empty').style.display = 'block';
+  }
+}
+</script>

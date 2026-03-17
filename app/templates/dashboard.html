@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — NexCall AI{% endblock %}
+
+{% block content %}
+<div style="padding:24px">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <h1 style="font-size:22px;font-weight:800;color:var(--text)">Dashboard</h1>
+      <p style="font-size:13px;color:var(--text3);margin-top:2px">Vue d'ensemble de votre centre d'appels</p>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="loadStats(7)"  id="btn7" >7j</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadStats(14)" id="btn14">14j</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadStats(30)" id="btn30">30j</button>
+      <button class="btn btn-primary btn-sm" onclick="location.href='/campaigns/new'">+ Campagne</button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+    <div class="kpi-card" style="--kpi-color:#22c55e">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Total Appels</div>
+          <div style="font-size:36px;font-weight:800;line-height:1" id="kpi-total">—</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px" id="kpi-today">— aujourd'hui</div>
+        </div>
+        <div style="width:42px;height:42px;background:rgba(34,197,94,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">📞</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#3b82f6">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Appels Réussis</div>
+          <div style="font-size:36px;font-weight:800;line-height:1" id="kpi-done">—</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px" id="kpi-rate">— taux succès</div>
+        </div>
+        <div style="width:42px;height:42px;background:rgba(59,130,246,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">✅</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#f97316">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Leads Générés</div>
+          <div style="font-size:36px;font-weight:800;line-height:1" id="kpi-leads">—</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px"><span id="kpi-hot">—</span> 🔥 chauds</div>
+        </div>
+        <div style="width:42px;height:42px;background:rgba(249,115,22,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">🎯</div>
+      </div>
+    </div>
+    <div class="kpi-card" style="--kpi-color:#a855f7">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Durée Moyenne</div>
+          <div style="font-size:36px;font-weight:800;line-height:1" id="kpi-dur">—</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">par appel</div>
+        </div>
+        <div style="width:42px;height:42px;background:rgba(168,85,247,.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px">⏱️</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts row -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px">
+    <!-- Bar chart -->
+    <div class="card" style="padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:700">Volume d'appels</span>
+        <span style="font-size:11px;color:var(--text3)" id="chart-period">7 derniers jours</span>
+      </div>
+      <div class="bar-chart" id="bar-chart"></div>
+    </div>
+    <!-- Activity feed -->
+    <div class="card" style="padding:20px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:12px">Appels récents</div>
+      <div id="recent-calls" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+
+  <!-- Recent calls table -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px;font-weight:700">Derniers appels</span>
+      <a href="/calls" style="font-size:12px;color:var(--brand);text-decoration:none">Voir tout →</a>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>Numéro</th><th>Type</th><th>Statut</th><th>Intention</th><th>Durée</th><th>Date</th>
+        </tr></thead>
+        <tbody id="dash-calls-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentDays = 7;
+
+async function loadStats(days) {
+  currentDays = days;
+  ['btn7','btn14','btn30'].forEach(id => {
+    document.getElementById(id).className = id === `btn${days}` ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+  });
+  document.getElementById('chart-period').textContent = `${days} derniers jours`;
+
+  const data = await apiGet(`/api/calls/stats?days=${days}`);
+  if (!data) return;
+
+  document.getElementById('kpi-total').textContent = data.total_calls;
+  document.getElementById('kpi-today').textContent = `${data.calls_today} aujourd'hui`;
+  document.getElementById('kpi-done').textContent  = data.completed_calls;
+  document.getElementById('kpi-rate').textContent  = `${data.success_rate}% taux succès`;
+  document.getElementById('kpi-leads').textContent = data.total_leads;
+  document.getElementById('kpi-hot').textContent   = data.hot_leads;
+  document.getElementById('kpi-dur').textContent   = fmtDur(data.avg_duration_sec);
+
+  renderBarChart('bar-chart', data.daily_calls);
+
+  // Recent calls mini
+  const calls = await apiGet('/api/calls/?limit=5');
+  if (calls?.calls) {
+    document.getElementById('recent-calls').innerHTML = calls.calls.map(c => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:18px">${c.direction==='inbound'?'📥':'📤'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:600;font-family:monospace">${fmtPhone(c.phone_number)}</div>
+          <div style="font-size:10px;color:var(--text3)">${fmtDate(c.started_at)}</div>
+        </div>
+        ${statusBadge(c.status)}
+      </div>`).join('');
+
+    document.getElementById('dash-calls-tbody').innerHTML = calls.calls.map(c => `
+      <tr style="cursor:pointer" onclick="location.href='/calls'">
+        <td style="font-family:monospace;font-size:12px">${fmtPhone(c.phone_number)}</td>
+        <td><span class="badge ${c.call_type==='ai_agent'?'badge-purple':'badge-blue'}">${c.call_type==='ai_agent'?'🤖 IA':'📋 IVR'}</span></td>
+        <td>${statusBadge(c.status)}</td>
+        <td>${intentBadge(c.intent)}</td>
+        <td style="font-family:monospace;font-size:12px">${fmtDur(c.duration_seconds)}</td>
+        <td style="color:var(--text3);font-size:12px">${fmtDate(c.started_at)}</td>
+      </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">Aucun appel</td></tr>';
+  }
+}
+
+loadStats(7);
+</script>
+{% endblock %}

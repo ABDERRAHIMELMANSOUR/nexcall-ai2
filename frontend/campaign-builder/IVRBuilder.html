@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<!--
+  NexCall AI — IVR Builder standalone
+  Éditeur de menu IVR complet, utilisable indépendamment.
+  Remplacez CAMPAIGN_ID par votre ID de campagne.
+-->
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IVR Builder — NexCall AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/nexcall.css">
+</head>
+<body style="background:var(--bg);min-height:100vh;padding:24px">
+
+<div style="max-width:900px;margin:0 auto">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+    <div style="width:36px;height:36px;background:rgba(59,130,246,.15);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px">📋</div>
+    <div>
+      <h1 style="font-size:20px;font-weight:800">Éditeur de menu IVR</h1>
+      <p style="font-size:12px;color:var(--text3)">Créez votre arborescence vocale interactive</p>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="previewIVR()">👁 Aperçu</button>
+      <button class="btn btn-primary" onclick="saveAll()">💾 Sauvegarder tout</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 300px;gap:20px">
+
+    <!-- LEFT: Editor -->
+    <div>
+
+      <!-- Welcome message card -->
+      <div class="card" style="padding:20px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+          <div style="width:26px;height:26px;background:var(--brand-dim);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--brand);font-weight:800">▶</div>
+          <span style="font-size:14px;font-weight:700">Message d'accueil</span>
+        </div>
+        <textarea class="input" id="ivr-welcome" rows="3"
+          placeholder="Bienvenue chez AssurancePro. Pour vous orienter, veuillez choisir parmi les options suivantes."></textarea>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <input class="input input-sm" style="width:120px" type="number" id="ivr-timeout" value="10" min="5" max="30">
+          <label style="font-size:11px;color:var(--text3);align-self:center">secondes avant timeout</label>
+        </div>
+      </div>
+
+      <!-- Options -->
+      <div class="card" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <span style="font-size:14px;font-weight:700">Options du menu (touches DTMF)</span>
+          <button class="btn btn-primary btn-sm" onclick="addOptionRow()">+ Ajouter une touche</button>
+        </div>
+
+        <div id="options-container" style="display:flex;flex-direction:column;gap:8px">
+          <!-- Options are rendered here by JS -->
+        </div>
+
+        <div id="empty-options" style="text-align:center;padding:32px;color:var(--text3);font-size:13px;display:none">
+          <div style="font-size:32px;margin-bottom:8px;opacity:.5">🔢</div>
+          Aucune option. Cliquez sur <strong>+ Ajouter une touche</strong>.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Preview & info -->
+    <div style="display:flex;flex-direction:column;gap:14px">
+
+      <!-- Live preview -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">📱</span> Aperçu en temps réel
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:12.5px;color:var(--text2);line-height:1.7;font-style:italic;min-height:80px" id="live-preview">
+          (Remplissez le message d'accueil et ajoutez des options)
+        </div>
+      </div>
+
+      <!-- Actions help -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:10px">Types d'actions</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <span style="font-size:14px">🤖</span>
+            <div><div style="font-weight:600">Agent IA</div><div style="color:var(--text3);font-size:11px">L'IA prend en charge la conversation</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <span style="font-size:14px">📞</span>
+            <div><div style="font-weight:600">Transfert</div><div style="color:var(--text3);font-size:11px">Redirige vers un agent humain</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <span style="font-size:14px">💬</span>
+            <div><div style="font-weight:600">Message info</div><div style="color:var(--text3);font-size:11px">Lit un texte puis raccroche</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px">
+            <span style="font-size:14px">🔴</span>
+            <div><div style="font-weight:600">Raccrocher</div><div style="color:var(--text3);font-size:11px">Termine l'appel poliment</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Webhook info -->
+      <div class="card" style="padding:18px">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Webhook Ringover</div>
+        <div style="font-family:monospace;font-size:10px;color:var(--brand);background:var(--surface3);padding:8px;border-radius:6px;cursor:pointer;word-break:break-all" onclick="copyToClipboard(this.textContent,'URL copiée !')" id="webhook-url">
+          POST /webhooks/ringover
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:5px">Cliquez pour copier</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT OPTION MODAL -->
+<div class="modal-overlay" id="option-modal">
+  <div class="modal modal-md">
+    <div class="modal-header">
+      <span class="modal-title" id="opt-title">Ajouter une option</span>
+      <button class="modal-close" onclick="closeModal('option-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="opt-edit-idx">
+      <div class="form-grid-2" style="margin-bottom:14px">
+        <div class="form-group">
+          <label class="form-label">Touche DTMF</label>
+          <input class="input" id="opt-key" placeholder="1" maxlength="1" style="font-size:24px;text-align:center;font-family:monospace;font-weight:800">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Libellé vocal</label>
+          <input class="input" id="opt-label" placeholder="Assurance Auto">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Action</label>
+        <select class="input" id="opt-action" onchange="updateActionHelp()">
+          <option value="ai_agent">🤖 Démarrer Agent IA</option>
+          <option value="transfer">📞 Transférer vers un agent</option>
+          <option value="info">💬 Lire un message d'information</option>
+          <option value="hangup">🔴 Raccrocher</option>
+        </select>
+      </div>
+      <div id="opt-value-group" class="form-group" style="margin-bottom:4px">
+        <label class="form-label" id="opt-value-label">Valeur</label>
+        <input class="input" id="opt-value" placeholder="">
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="opt-value-hint"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('option-modal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveOption()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="nx-toast" id="nx-toast"></div>
+
+<script src="/static/js/nexcall.js"></script>
+<script>
+const CAMPAIGN_ID = window.CAMPAIGN_ID || 1; // Set this from your page
+
+let ivrOptions = [
+  { key: '1', label: 'Assurance Auto',    action: 'ai_agent',  value: 'assurance_auto'  },
+  { key: '2', label: 'Assurance Santé',   action: 'ai_agent',  value: 'assurance_sante' },
+  { key: '3', label: 'Immobilier',        action: 'ai_agent',  value: 'immobilier'      },
+  { key: '4', label: 'Parler à un conseiller', action: 'transfer', value: ''             },
+];
+
+const ACTION_CONFIG = {
+  ai_agent: { label: "Offre (ex: assurance_auto, assurance_sante…)", placeholder: "assurance_auto", show: true  },
+  transfer: { label: "Numéro de transfert", placeholder: "+33600000000", show: true  },
+  info:     { label: "Texte à lire à l'appelant", placeholder: "Nos horaires sont…", show: true  },
+  hangup:   { label: "",                         placeholder: "",              show: false },
+};
+
+function renderOptions() {
+  const container = document.getElementById('options-container');
+  const empty     = document.getElementById('empty-options');
+
+  if (!ivrOptions.length) {
+    container.innerHTML = '';
+    empty.style.display = 'block';
+    updatePreview();
+    return;
+  }
+  empty.style.display = 'none';
+
+  const ACTION_ICONS = { ai_agent: '🤖', transfer: '📞', info: '💬', hangup: '🔴' };
+  container.innerHTML = ivrOptions.map((o, idx) => `
+    <div class="ivr-node" draggable="true"
+         ondragstart="dragStart(${idx})" ondragover="dragOver(event,${idx})" ondrop="drop(${idx})">
+      <div style="cursor:grab;color:var(--text3);font-size:16px">⠿</div>
+      <div class="ivr-key">${escHtml(o.key)}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${escHtml(o.label)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">
+          ${ACTION_ICONS[o.action] || '•'} ${o.action}${o.value ? ' → ' + escHtml(o.value) : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-ghost btn-xs" onclick="editOption(${idx})">✏️</button>
+        <button class="btn btn-danger btn-xs" onclick="removeOption(${idx})">✕</button>
+      </div>
+    </div>`).join('');
+
+  updatePreview();
+}
+
+function updatePreview() {
+  const welcome = document.getElementById('ivr-welcome').value.trim();
+  const opts    = ivrOptions;
+  let text = welcome ? welcome + ' ' : '';
+  text += opts.map(o => `Tapez ${o.key} pour ${o.label}.`).join(' ');
+  document.getElementById('live-preview').textContent = text.trim() || '(En attente de contenu…)';
+}
+
+function addOptionRow() {
+  document.getElementById('opt-title').textContent = 'Ajouter une option';
+  document.getElementById('opt-edit-idx').value = '';
+  document.getElementById('opt-key').value   = '';
+  document.getElementById('opt-label').value = '';
+  document.getElementById('opt-action').value = 'ai_agent';
+  document.getElementById('opt-value').value = '';
+  updateActionHelp();
+  openModal('option-modal');
+  setTimeout(() => document.getElementById('opt-key').focus(), 100);
+}
+
+function editOption(idx) {
+  const o = ivrOptions[idx];
+  document.getElementById('opt-title').textContent    = 'Modifier l\'option';
+  document.getElementById('opt-edit-idx').value       = idx;
+  document.getElementById('opt-key').value            = o.key;
+  document.getElementById('opt-label').value          = o.label;
+  document.getElementById('opt-action').value         = o.action;
+  document.getElementById('opt-value').value          = o.value || '';
+  updateActionHelp();
+  openModal('option-modal');
+}
+
+function removeOption(idx) {
+  ivrOptions.splice(idx, 1);
+  renderOptions();
+}
+
+function saveOption() {
+  const idx    = document.getElementById('opt-edit-idx').value;
+  const key    = document.getElementById('opt-key').value.trim();
+  const label  = document.getElementById('opt-label').value.trim();
+  const action = document.getElementById('opt-action').value;
+  const value  = document.getElementById('opt-value').value.trim();
+
+  if (!key)   { showToast('Entrez une touche (ex: 1, 2, *)', 'error'); return; }
+  if (!label) { showToast('Entrez un libellé', 'error'); return; }
+
+  // Prevent duplicate keys (except when editing the same entry)
+  const duplicate = ivrOptions.some((o, i) => o.key === key && i !== parseInt(idx));
+  if (duplicate) { showToast(`La touche "${key}" est déjà utilisée`, 'error'); return; }
+
+  const entry = { key, label, action, value };
+  if (idx !== '') {
+    ivrOptions[parseInt(idx)] = entry;
+  } else {
+    ivrOptions.push(entry);
+  }
+
+  closeModal('option-modal');
+  renderOptions();
+  showToast('Option sauvegardée', 'success');
+}
+
+function updateActionHelp() {
+  const action = document.getElementById('opt-action').value;
+  const cfg    = ACTION_CONFIG[action];
+  const grp    = document.getElementById('opt-value-group');
+  grp.style.display = cfg.show ? 'flex' : 'none';
+  if (cfg.show) {
+    document.getElementById('opt-value-label').textContent = cfg.label;
+    document.getElementById('opt-value').placeholder = cfg.placeholder;
+    document.getElementById('opt-value-hint').textContent = '';
+  }
+}
+
+// Drag & drop reorder
+let dragIdx = null;
+function dragStart(idx) { dragIdx = idx; }
+function dragOver(e, idx) { e.preventDefault(); }
+function drop(idx) {
+  if (dragIdx === null || dragIdx === idx) return;
+  const moved = ivrOptions.splice(dragIdx, 1)[0];
+  ivrOptions.splice(idx, 0, moved);
+  dragIdx = null;
+  renderOptions();
+}
+
+// Preview on welcome text change
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('ivr-welcome').addEventListener('input', updatePreview);
+  updateActionHelp();
+  renderOptions();
+  // Set webhook URL
+  document.getElementById('webhook-url').textContent = window.location.origin + '/webhooks/ringover';
+});
+
+async function saveAll() {
+  const welcome  = document.getElementById('ivr-welcome').value.trim();
+  const timeout  = parseInt(document.getElementById('ivr-timeout').value) || 10;
+
+  if (!welcome) { showToast('Le message d\'accueil est requis', 'error'); return; }
+  if (!ivrOptions.length) { showToast('Ajoutez au moins une option', 'error'); return; }
+
+  // Try to load existing menu, or create
+  let menu = await apiGet(`/api/ivr/menu/${CAMPAIGN_ID}`).catch(() => null);
+
+  if (menu?.id) {
+    await apiPut(`/api/ivr/menu/${menu.id}`, {
+      campaign_id: CAMPAIGN_ID, name: 'Menu Principal',
+      welcome_text: welcome, timeout_seconds: timeout
+    });
+    // Delete old options and recreate
+    for (const opt of (menu.options || [])) {
+      await apiDel(`/api/ivr/option/${opt.id}`);
+    }
+  } else {
+    menu = await apiPost('/api/ivr/menu', {
+      campaign_id: CAMPAIGN_ID, name: 'Menu Principal',
+      welcome_text: welcome, timeout_seconds: timeout
+    });
+  }
+
+  if (!menu?.id) { showToast('Erreur sauvegarde menu', 'error'); return; }
+
+  for (let i = 0; i < ivrOptions.length; i++) {
+    const o = ivrOptions[i];
+    await apiPost('/api/ivr/option', {
+      menu_id: menu.id, key_press: o.key, label: o.label,
+      action: o.action, action_value: o.value || null, position: i
+    });
+  }
+  showToast('Menu IVR sauvegardé ✓', 'success');
+}
+
+function previewIVR() {
+  const welcome = document.getElementById('ivr-welcome').value.trim();
+  const opts    = ivrOptions;
+  let text = '📱 Simulation appel:\n\n';
+  text += (welcome || '(Aucun message d\'accueil)') + '\n\n';
+  opts.forEach(o => { text += `  [${o.key}] → ${o.label} (${o.action})\n`; });
+  alert(text);
+}
+</script>
+</body>
+</html>

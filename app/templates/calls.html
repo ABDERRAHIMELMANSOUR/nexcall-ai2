@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Appels — NexCall AI{% endblock %}
+
+{% block content %}
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <h1 style="font-size:22px;font-weight:800">Appels</h1>
+      <p style="font-size:13px;color:var(--text3);margin-top:2px">Historique et détails de tous vos appels</p>
+    </div>
+    <button class="btn btn-primary" onclick="openDialer()">📞 Appel sortant</button>
+  </div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <input class="input" style="width:200px" placeholder="🔍 Rechercher un numéro…" id="search-input" oninput="filterCalls()">
+    <select class="input" style="width:150px" id="filter-status" onchange="loadCalls()">
+      <option value="">Tous statuts</option>
+      <option value="completed">Terminé</option>
+      <option value="in_progress">En cours</option>
+      <option value="transferred">Transféré</option>
+      <option value="failed">Échec</option>
+    </select>
+    <select class="input" style="width:150px" id="filter-direction" onchange="loadCalls()">
+      <option value="">Toutes directions</option>
+      <option value="inbound">Entrant</option>
+      <option value="outbound">Sortant</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="loadCalls()">↻ Actualiser</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>Numéro</th><th>Direction</th><th>Type</th><th>Statut</th>
+          <th>Intention</th><th>Durée</th><th>Campagne</th><th>Date</th><th></th>
+        </tr></thead>
+        <tbody id="calls-tbody"></tbody>
+      </table>
+    </div>
+    <div id="calls-pagination"></div>
+  </div>
+</div>
+
+<!-- CALL DETAIL MODAL -->
+<div class="modal-overlay" id="call-modal">
+  <div class="modal" style="max-width:680px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-size:17px;font-weight:800" id="modal-title">Détail de l'appel</h2>
+      <button onclick="closeModal()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+
+    <!-- Call info -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+      <div class="card-sm" style="padding:12px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Appelant</div>
+        <div style="font-family:monospace;font-size:14px;font-weight:600" id="m-phone">—</div>
+      </div>
+      <div class="card-sm" style="padding:12px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Statut</div>
+        <div id="m-status">—</div>
+      </div>
+      <div class="card-sm" style="padding:12px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">Durée</div>
+        <div style="font-family:monospace;font-size:14px;font-weight:600" id="m-duration">—</div>
+      </div>
+    </div>
+
+    <!-- AI Summary -->
+    <div id="summary-section" style="display:none;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">🤖 Résumé IA</div>
+      <div class="card-sm" style="padding:14px;font-size:13px;line-height:1.6;color:var(--text2)" id="m-summary"></div>
+    </div>
+
+    <!-- Transcript -->
+    <div id="transcript-section" style="display:none">
+      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">💬 Transcript</div>
+      <div style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:8px" id="m-transcript"></div>
+    </div>
+
+    <div id="no-transcript" style="text-align:center;padding:20px;color:var(--text3);font-size:13px">
+      Aucun transcript disponible pour cet appel.
+    </div>
+  </div>
+</div>
+
+<!-- DIALER MODAL -->
+<div class="modal-overlay" id="dialer-modal">
+  <div class="modal" style="max-width:380px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-size:17px;font-weight:800">📞 Appel sortant</h2>
+      <button onclick="closeDialer()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-label">Numéro de destination</label>
+      <input class="input" id="dial-number" placeholder="+33 6 XX XX XX XX" style="font-family:monospace;font-size:18px;text-align:center">
+    </div>
+    <!-- Numpad -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px">
+      {% for k in ['1','2','3','4','5','6','7','8','9','*','0','#'] %}
+      <button onclick="dialKey('{{ k }}')" class="btn btn-ghost" style="font-size:18px;font-family:monospace;padding:12px;justify-content:center">{{ k }}</button>
+      {% endfor %}
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-label">Type d'appel</label>
+      <select class="input" id="dial-type">
+        <option value="ai_agent">🤖 Agent IA</option>
+        <option value="ivr">📋 IVR</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" onclick="makeDial()">📞 Lancer l'appel</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let callPage = 1;
+let allCalls = [];
+
+async function loadCalls(page = 1) {
+  callPage = page;
+  const status    = document.getElementById('filter-status').value;
+  const direction = document.getElementById('filter-direction').value;
+  let url = `/api/calls/?page=${page}&limit=20`;
+  if (status)    url += `&status=${status}`;
+  if (direction) url += `&direction=${direction}`;
+
+  const data = await apiGet(url);
+  if (!data) return;
+  allCalls = data.calls || [];
+
+  renderCallsTable(allCalls);
+  renderPagination('calls-pagination', data.total, page, 20, 'loadCalls');
+}
+
+function filterCalls() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  const filtered = allCalls.filter(c => (c.phone_number||'').toLowerCase().includes(q));
+  renderCallsTable(filtered);
+}
+
+function renderCallsTable(calls) {
+  const tbody = document.getElementById('calls-tbody');
+  if (!calls.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Aucun appel trouvé</td></tr>';
+    return;
+  }
+  tbody.innerHTML = calls.map(c => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px;font-weight:600">${fmtPhone(c.phone_number)}</td>
+      <td><span class="badge ${c.direction==='inbound'?'badge-blue':'badge-orange'}">${c.direction==='inbound'?'📥 Entrant':'📤 Sortant'}</span></td>
+      <td><span class="badge ${c.call_type==='ai_agent'?'badge-purple':'badge-blue'}">${c.call_type==='ai_agent'?'🤖 IA':'📋 IVR'}</span></td>
+      <td>${statusBadge(c.status)}</td>
+      <td>${intentBadge(c.intent)}</td>
+      <td style="font-family:monospace;font-size:12px">${fmtDur(c.duration_seconds)}</td>
+      <td style="color:var(--text3);font-size:12px">${c.campaign_id ? `#${c.campaign_id}` : '—'}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtDate(c.started_at)}</td>
+      <td><button class="btn btn-ghost btn-xs" onclick="openCallDetail('${c.call_id}','${fmtPhone(c.phone_number)}','${c.status}',${c.duration_seconds})">Voir</button></td>
+    </tr>`).join('');
+}
+
+async function openCallDetail(callId, phone, status, dur) {
+  document.getElementById('m-phone').textContent    = phone;
+  document.getElementById('m-status').innerHTML     = statusBadge(status);
+  document.getElementById('m-duration').textContent = fmtDur(dur);
+  document.getElementById('m-summary').textContent  = '';
+  document.getElementById('m-transcript').innerHTML = '';
+  document.getElementById('summary-section').style.display    = 'none';
+  document.getElementById('transcript-section').style.display = 'none';
+  document.getElementById('no-transcript').style.display      = 'block';
+  document.getElementById('call-modal').classList.add('open');
+
+  if (!callId || callId === 'null' || callId === 'undefined') return;
+
+  const data = await apiGet(`/api/calls/${callId}/detail`);
+  if (!data) return;
+
+  if (data.ai_summary) {
+    document.getElementById('m-summary').textContent = data.ai_summary;
+    document.getElementById('summary-section').style.display = 'block';
+  }
+
+  if (data.transcript?.length) {
+    document.getElementById('no-transcript').style.display = 'none';
+    document.getElementById('transcript-section').style.display = 'block';
+    document.getElementById('m-transcript').innerHTML = data.transcript.map(m => `
+      <div style="display:flex;gap:10px;${m.role==='assistant'?'':'flex-direction:row-reverse'}">
+        <div style="width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;${m.role==='assistant'?'background:rgba(34,197,94,.15)':'background:var(--surface3)'}">
+          ${m.role==='assistant'?'🤖':'👤'}
+        </div>
+        <div style="max-width:80%;padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.5;${m.role==='assistant'?'background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15)':'background:var(--surface2);border:1px solid var(--border)'}">
+          ${escHtml(m.content)}
+        </div>
+      </div>`).join('');
+  }
+}
+
+function closeModal() { document.getElementById('call-modal').classList.remove('open'); }
+function openDialer() { document.getElementById('dialer-modal').classList.add('open'); }
+function closeDialer() { document.getElementById('dialer-modal').classList.remove('open'); }
+function dialKey(k) {
+  const el = document.getElementById('dial-number');
+  el.value += k;
+}
+async function makeDial() {
+  const num = document.getElementById('dial-number').value.trim();
+  if (!num) { showToast('Entrez un numéro', 'error'); return; }
+  const type = document.getElementById('dial-type').value;
+  const r = await apiPost('/api/calls/outbound', {to_number: num, call_type: type});
+  if (r) { closeDialer(); showToast(`Appel lancé vers ${num}`, 'success'); loadCalls(); }
+}
+
+loadCalls();
+</script>
+{% endblock %}

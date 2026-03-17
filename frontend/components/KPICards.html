@@ -1,0 +1,55 @@
+<!--
+  COMPOSANT : KPI Cards
+  Usage : copiez ce bloc dans n'importe quelle page du dashboard
+  Dépendances : nexcall.css, nexcall.js
+  API endpoint : /api/calls/stats?days=7
+-->
+
+<div class="kpi-grid" id="kpi-grid">
+  <!-- KPI 1 — Total Appels -->
+  <div class="kpi-card" style="--kpi-accent:#22c55e">
+    <div class="kpi-icon" style="background:rgba(34,197,94,.1)">📞</div>
+    <div class="kpi-label">Total Appels</div>
+    <div class="kpi-value" id="kpi-total">—</div>
+    <div class="kpi-sub"><span id="kpi-today">—</span> aujourd'hui</div>
+  </div>
+
+  <!-- KPI 2 — Appels réussis -->
+  <div class="kpi-card" style="--kpi-accent:#3b82f6">
+    <div class="kpi-icon" style="background:rgba(59,130,246,.1)">✅</div>
+    <div class="kpi-label">Appels Réussis</div>
+    <div class="kpi-value" id="kpi-done">—</div>
+    <div class="kpi-sub"><span id="kpi-rate">—</span>% taux de succès</div>
+  </div>
+
+  <!-- KPI 3 — Leads générés -->
+  <div class="kpi-card" style="--kpi-accent:#f97316">
+    <div class="kpi-icon" style="background:rgba(249,115,22,.1)">🎯</div>
+    <div class="kpi-label">Leads Générés</div>
+    <div class="kpi-value" id="kpi-leads">—</div>
+    <div class="kpi-sub"><span id="kpi-hot">—</span> 🔥 chauds</div>
+  </div>
+
+  <!-- KPI 4 — Durée moyenne -->
+  <div class="kpi-card" style="--kpi-accent:#a855f7">
+    <div class="kpi-icon" style="background:rgba(168,85,247,.1)">⏱️</div>
+    <div class="kpi-label">Durée Moyenne</div>
+    <div class="kpi-value" id="kpi-dur">—</div>
+    <div class="kpi-sub">par appel</div>
+  </div>
+</div>
+
+<script>
+async function loadKPIs(days = 7) {
+  const data = await apiGet(`/api/calls/stats?days=${days}`);
+  if (!data) return;
+  document.getElementById('kpi-total').textContent = fmtNumber(data.total_calls);
+  document.getElementById('kpi-today').textContent = data.calls_today ?? 0;
+  document.getElementById('kpi-done').textContent  = fmtNumber(data.completed_calls);
+  document.getElementById('kpi-rate').textContent  = data.success_rate ?? 0;
+  document.getElementById('kpi-leads').textContent = fmtNumber(data.total_leads);
+  document.getElementById('kpi-hot').textContent   = data.hot_leads ?? 0;
+  document.getElementById('kpi-dur').textContent   = fmtDur(data.avg_duration_sec);
+}
+loadKPIs();
+</script>

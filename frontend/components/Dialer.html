@@ -1,0 +1,144 @@
+<!--
+  COMPOSANT : Dialer Appel Sortant
+  Usage : copiez ce bloc, appelez openDialer()
+  Dépendances : nexcall.css, nexcall.js
+  API endpoint : POST /api/calls/outbound
+-->
+
+<div class="modal-overlay" id="dialer-modal">
+  <div class="modal modal-sm">
+
+    <div class="modal-header">
+      <span class="modal-title">📞 Appel sortant</span>
+      <button class="modal-close" onclick="closeModal('dialer-modal')">×</button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Number display -->
+      <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:12px 16px;margin-bottom:14px;text-align:center">
+        <div id="dial-display" style="font-family:monospace;font-size:22px;font-weight:700;letter-spacing:2px;min-height:32px;color:var(--text)">
+          &nbsp;
+        </div>
+        <input type="hidden" id="dial-number">
+      </div>
+
+      <!-- Numpad -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px">
+        <!-- Row 1 -->
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('1')">
+          1<span style="font-size:8px;color:var(--text4)"></span>
+        </button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('2')">
+          2<span style="font-size:8px;color:var(--text4)">ABC</span>
+        </button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('3')">
+          3<span style="font-size:8px;color:var(--text4)">DEF</span>
+        </button>
+        <!-- Row 2 -->
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('4')">
+          4<span style="font-size:8px;color:var(--text4)">GHI</span>
+        </button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('5')">
+          5<span style="font-size:8px;color:var(--text4)">JKL</span>
+        </button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('6')">
+          6<span style="font-size:8px;color:var(--text4)">MNO</span>
+        </button>
+        <!-- Row 3 -->
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('7')">
+          7<span style="font-size:8px;color:var(--text4)">PQRS</span>
+        </button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('8')">
+          8<span style="font-size:8px;color:var(--text4)">TUV</span>
+        </button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center;flex-direction:column;gap:2px" onclick="dialKey('9')">
+          9<span style="font-size:8px;color:var(--text4)">WXYZ</span>
+        </button>
+        <!-- Row 4 -->
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center" onclick="dialKey('*')">*</button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center" onclick="dialKey('0')">0</button>
+        <button class="btn btn-dark" style="padding:14px;font-size:18px;font-family:monospace;justify-content:center" onclick="dialKey('#')">#</button>
+      </div>
+
+      <!-- Backspace & + -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:16px">
+        <button class="btn btn-ghost btn-sm" onclick="dialKey('+')">+ (international)</button>
+        <button class="btn btn-ghost btn-sm" onclick="dialBackspace()">⌫ Effacer</button>
+      </div>
+
+      <!-- Type selector -->
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Type d'appel</label>
+        <select class="input" id="dial-type">
+          <option value="ai_agent">🤖 Agent IA</option>
+          <option value="ivr">📋 IVR</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('dialer-modal')">Annuler</button>
+      <button class="btn btn-primary btn-lg" style="gap:8px" onclick="makeDialCall()">
+        📞 Appeler
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let _dialNumber = '';
+
+function openDialer() {
+  _dialNumber = '';
+  _updateDialDisplay();
+  openModal('dialer-modal');
+}
+
+function dialKey(k) {
+  if (_dialNumber.length >= 15) return;
+  // Auto-add + for first char if needed
+  if (_dialNumber === '' && k !== '+') _dialNumber = '+33';
+  if (k === '+') { _dialNumber = '+'; }
+  else { _dialNumber += k; }
+  _updateDialDisplay();
+}
+
+function dialBackspace() {
+  _dialNumber = _dialNumber.slice(0, -1);
+  _updateDialDisplay();
+}
+
+function _updateDialDisplay() {
+  const el = document.getElementById('dial-display');
+  if (!el) return;
+  // Format display: +33 6 12 34 56 78
+  el.textContent = _dialNumber || '\u00a0'; // nbsp if empty
+}
+
+async function makeDialCall() {
+  const num = _dialNumber.trim();
+  if (!num || num.length < 6) {
+    showToast('Entrez un numéro valide', 'error');
+    return;
+  }
+  const type = document.getElementById('dial-type').value;
+  const r = await apiPost('/api/calls/outbound', { to_number: num, call_type: type });
+  if (r?.call_id) {
+    closeModal('dialer-modal');
+    showToast(`Appel lancé → ${num}`, 'success');
+    // Reload calls list if function exists
+    if (typeof loadCalls === 'function') loadCalls();
+  }
+}
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  const modal = document.getElementById('dialer-modal');
+  if (!modal?.classList.contains('open')) return;
+  if (/^[0-9]$/.test(e.key))   dialKey(e.key);
+  if (e.key === 'Backspace')    dialBackspace();
+  if (e.key === 'Enter')        makeDialCall();
+});
+</script>

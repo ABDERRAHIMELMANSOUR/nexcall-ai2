@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}IVR Builder — NexCall AI{% endblock %}
+{% block content %}
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px">
+    <a href="/campaigns" style="color:var(--text3);text-decoration:none;font-size:13px">← Campagnes</a>
+    <span style="color:var(--border2)">/</span>
+    <h1 style="font-size:22px;font-weight:800">Éditeur IVR</h1>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:20px">
+
+    <!-- IVR TREE (left) -->
+    <div>
+      <!-- Menu settings -->
+      <div class="card" style="padding:20px;margin-bottom:14px" id="menu-settings">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">📋 Menu principal</div>
+        <div style="margin-bottom:12px">
+          <label class="form-label">Message d'accueil</label>
+          <textarea class="input" id="welcome-text" rows="3"
+            placeholder="Bienvenue chez AssurancePro. Pour vous orienter, veuillez choisir parmi les options suivantes."></textarea>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="saveMenu()">💾 Sauvegarder</button>
+      </div>
+
+      <!-- Options list -->
+      <div class="card" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div style="font-size:14px;font-weight:700">Options du menu</div>
+          <button class="btn btn-primary btn-sm" onclick="openAddOption()">+ Ajouter</button>
+        </div>
+        <div id="options-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </div>
+
+    <!-- PREVIEW (right) -->
+    <div>
+      <div class="card" style="padding:20px;position:sticky;top:20px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <span style="font-size:16px">📱</span> Aperçu vocal
+        </div>
+        <div style="background:var(--surface2);border-radius:10px;padding:14px;font-size:13px;line-height:1.7;color:var(--text2);font-style:italic" id="ivr-preview">
+          Chargement…
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);margin-bottom:8px">Webhook à configurer</div>
+          <div style="font-family:monospace;font-size:10px;color:var(--brand);background:var(--surface3);padding:8px;border-radius:6px;word-break:break-all">
+            POST /webhooks/ringover
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ADD/EDIT OPTION MODAL -->
+<div class="modal-overlay" id="option-modal">
+  <div class="modal" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+      <h2 style="font-size:17px;font-weight:800" id="opt-modal-title">Ajouter une option</h2>
+      <button onclick="closeOptModal()" style="background:none;border:none;color:var(--text3);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <input type="hidden" id="edit-opt-id">
+    <div style="display:grid;grid-template-columns:80px 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <label class="form-label">Touche</label>
+        <input class="input" id="opt-key" placeholder="1" style="font-size:20px;text-align:center;font-family:monospace">
+      </div>
+      <div>
+        <label class="form-label">Libellé</label>
+        <input class="input" id="opt-label" placeholder="Assurance Auto">
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-label">Action</label>
+      <select class="input" id="opt-action" onchange="toggleActionVal()">
+        <option value="ai_agent">🤖 Démarrer Agent IA</option>
+        <option value="transfer">📞 Transférer vers</option>
+        <option value="info">💬 Lire un message</option>
+        <option value="hangup">🔴 Raccrocher</option>
+      </select>
+    </div>
+    <div id="action-val-wrap" style="margin-bottom:14px">
+      <label class="form-label" id="action-val-label">Offre / Numéro / Message</label>
+      <input class="input" id="opt-action-val" placeholder="assurance_auto, +33600000000…">
+    </div>
+    <div class="mfooter" style="display:flex;justify-content:flex-end;gap:8px">
+      <button class="btn btn-ghost" onclick="closeOptModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveOption()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CAMP_ID = {{ camp_id }};
+let menuId = null;
+
+const ACTION_LABELS = {
+  ai_agent: 'Offre (ex: assurance_auto)',
+  transfer: 'Numéro de transfert (+33…)',
+  info:     'Texte à lire',
+  hangup:   '(Aucune valeur requise)',
+};
+
+async function loadIVR() {
+  try {
+    const data = await apiGet(`/api/ivr/menu/${CAMP_ID}`);
+    menuId = data.id;
+    document.getElementById('welcome-text').value = data.welcome_text;
+    renderOptions(data.options || []);
+    updatePreview(data.welcome_text, data.options || []);
+  } catch {
+    // No menu yet, create default
+    const data = await apiPost(`/api/ivr/menu/${CAMP_ID}/default`, {});
+    if (data) {
+      menuId = data.id;
+      document.getElementById('welcome-text').value = data.welcome_text;
+      renderOptions(data.options || []);
+      updatePreview(data.welcome_text, data.options || []);
+    }
+  }
+}
+
+function renderOptions(opts) {
+  const container = document.getElementById('options-list');
+  if (!opts.length) {
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Aucune option. Cliquez sur + Ajouter.</div>';
+    return;
+  }
+  const ACTION_ICONS = {ai_agent:'🤖', transfer:'📞', info:'💬', hangup:'🔴', submenu:'📋'};
+  container.innerHTML = opts.map(o => `
+    <div class="card-sm" style="padding:12px;display:flex;align-items:center;gap:12px">
+      <div style="width:36px;height:36px;border-radius:8px;background:var(--surface);border:2px solid var(--brand);display:flex;align-items:center;justify-content:center;font-size:16px;font-family:monospace;font-weight:800;flex-shrink:0">${o.key_press}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600">${escHtml(o.label)}</div>
+        <div style="font-size:11px;color:var(--text3)">${ACTION_ICONS[o.action]||'•'} ${o.action}${o.action_value?' → '+o.action_value:''}</div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-ghost btn-xs" onclick="editOption(${o.id},'${o.key_press}','${escHtml(o.label)}','${o.action}','${o.action_value||''}')">✏️</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteOption(${o.id})">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function updatePreview(welcome, opts) {
+  const text = welcome + ' ' + opts.map(o => `Tapez ${o.key_press} pour ${o.label}.`).join(' ');
+  document.getElementById('ivr-preview').textContent = text || '(Aucune option définie)';
+}
+
+async function saveMenu() {
+  if (!menuId) return;
+  const welcome = document.getElementById('welcome-text').value.trim();
+  await apiPut(`/api/ivr/menu/${menuId}`, {campaign_id:CAMP_ID, name:'Menu Principal', welcome_text:welcome, timeout_seconds:10});
+  showToast('Menu sauvegardé', 'success');
+  loadIVR();
+}
+
+function toggleActionVal() {
+  const action = document.getElementById('opt-action').value;
+  document.getElementById('action-val-label').textContent = ACTION_LABELS[action] || 'Valeur';
+  document.getElementById('action-val-wrap').style.display = action === 'hangup' ? 'none' : 'block';
+}
+
+function openAddOption() {
+  document.getElementById('opt-modal-title').textContent = 'Ajouter une option';
+  document.getElementById('edit-opt-id').value = '';
+  document.getElementById('opt-key').value = '';
+  document.getElementById('opt-label').value = '';
+  document.getElementById('opt-action').value = 'ai_agent';
+  document.getElementById('opt-action-val').value = '';
+  toggleActionVal();
+  document.getElementById('option-modal').classList.add('open');
+}
+
+function editOption(id, key, label, action, val) {
+  document.getElementById('opt-modal-title').textContent = 'Modifier l\'option';
+  document.getElementById('edit-opt-id').value = id;
+  document.getElementById('opt-key').value = key;
+  document.getElementById('opt-label').value = label;
+  document.getElementById('opt-action').value = action;
+  document.getElementById('opt-action-val').value = val;
+  toggleActionVal();
+  document.getElementById('option-modal').classList.add('open');
+}
+
+function closeOptModal() { document.getElementById('option-modal').classList.remove('open'); }
+
+async function saveOption() {
+  if (!menuId) { showToast('Créez d\'abord le menu', 'error'); return; }
+  const id    = document.getElementById('edit-opt-id').value;
+  const payload = {
+    menu_id:      menuId,
+    key_press:    document.getElementById('opt-key').value.trim(),
+    label:        document.getElementById('opt-label').value.trim(),
+    action:       document.getElementById('opt-action').value,
+    action_value: document.getElementById('opt-action-val').value.trim() || null,
+    position:     0,
+  };
+  if (!payload.key_press || !payload.label) {
+    showToast('Touche et libellé requis', 'error'); return;
+  }
+  if (id) {
+    await apiPut(`/api/ivr/option/${id}`, payload);
+  } else {
+    await apiPost('/api/ivr/option', payload);
+  }
+  closeOptModal();
+  showToast('Option sauvegardée', 'success');
+  loadIVR();
+}
+
+async function deleteOption(id) {
+  if (!confirm('Supprimer cette option ?')) return;
+  await apiDel(`/api/ivr/option/${id}`);
+  showToast('Option supprimée', 'info');
+  loadIVR();
+}
+
+loadIVR();
+</script>
+{% endblock %}

@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle Campagne — NexCall AI{% endblock %}
+{% block content %}
+<div style="padding:24px;max-width:780px">
+  <div style="display:flex;align-items:center;gap:14px;margin-bottom:28px">
+    <a href="/campaigns" style="color:var(--text3);text-decoration:none;font-size:13px">← Campagnes</a>
+    <span style="color:var(--border2)">/</span>
+    <h1 style="font-size:22px;font-weight:800">Nouvelle campagne</h1>
+  </div>
+
+  <!-- STEP INDICATOR -->
+  <div style="display:flex;align-items:center;gap:0;margin-bottom:32px" id="step-indicator">
+    {% for n, label in [(1,'Type'),(2,'Offre'),(3,'Contacts'),(4,'Résumé')] %}
+    <div style="display:flex;align-items:center;gap:0">
+      <div id="step-dot-{{ n }}" style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;transition:all .2s;background:{% if loop.first %}var(--brand){% else %}var(--surface2){% endif %};color:{% if loop.first %}#fff{% else %}var(--text3){% endif %}">{{ n }}</div>
+      <span id="step-label-{{ n }}" style="margin-left:6px;font-size:12px;font-weight:600;transition:all .2s;color:{% if loop.first %}var(--text){% else %}var(--text3){% endif %}">{{ label }}</span>
+      {% if not loop.last %}<div style="width:40px;height:1px;background:var(--border2);margin:0 10px"></div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- STEP 1: TYPE -->
+  <div id="step-1">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Choisissez le type d'appel</h2>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:20px">Comment votre campagne va-t-elle contacter vos prospects ?</p>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">
+      <div id="type-ai" onclick="selectType('ai_agent')"
+           style="border:2px solid var(--brand);border-radius:14px;padding:24px;cursor:pointer;background:rgba(34,197,94,.05);transition:all .2s">
+        <div style="font-size:36px;margin-bottom:12px">🤖</div>
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px">Agent IA vocal</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.5">L'IA parle naturellement avec vos prospects, comprend leurs besoins et les qualifie automatiquement.</div>
+        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-green">Conversation naturelle</span>
+          <span class="badge badge-purple">Qualification auto</span>
+        </div>
+      </div>
+      <div id="type-ivr" onclick="selectType('ivr')"
+           style="border:2px solid var(--border);border-radius:14px;padding:24px;cursor:pointer;background:transparent;transition:all .2s">
+        <div style="font-size:36px;margin-bottom:12px">📋</div>
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px">IVR téléphonique</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.5">Menu vocal classique. L'appelant tape des touches pour naviguer dans votre arborescence.</div>
+        <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+          <span class="badge badge-blue">Tapez 1, tapez 2…</span>
+          <span class="badge badge-gray">Simple & fiable</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <label class="form-label">Nom de la campagne</label>
+      <input class="input" id="camp-name" placeholder="Ex: Prospection Assurance Auto Mars 2025">
+    </div>
+    <div>
+      <label class="form-label">Description (optionnel)</label>
+      <textarea class="input" id="camp-desc" placeholder="Décrivez l'objectif de cette campagne…" rows="2"></textarea>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:24px">
+      <button class="btn btn-primary" onclick="goStep(2)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: OFFER -->
+  <div id="step-2" style="display:none">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Choisissez votre offre</h2>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:20px">Quel produit ou service votre agent va-t-il proposer ?</p>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px">
+      {% for key, icon, label in [
+        ('assurance_auto','🚗','Assurance Auto'),
+        ('assurance_sante','❤️','Assurance Santé'),
+        ('mutuelle','💊','Mutuelle'),
+        ('immobilier','🏠','Immobilier'),
+        ('credit','💳','Crédit'),
+        ('autre','🎯','Autre'),
+      ] %}
+      <div id="offer-{{ key }}" onclick="selectOffer('{{ key }}')"
+           style="border:2px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;text-align:center;transition:all .2s">
+        <div style="font-size:28px;margin-bottom:8px">{{ icon }}</div>
+        <div style="font-size:13px;font-weight:600">{{ label }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div id="script-section">
+      <label class="form-label">Script vocal de l'agent IA</label>
+      <textarea class="input" id="offer-script" rows="5"
+        placeholder="Ex: Bonjour, je suis Sophie de AssurancePro. Je vous appelle concernant votre assurance auto. Avez-vous quelques minutes pour faire le point sur votre contrat actuel ?"></textarea>
+      <p style="font-size:11px;color:var(--text3);margin-top:5px">Ce texte guide l'IA dans sa conversation. Soyez naturel et précis sur l'objectif.</p>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:24px">
+      <button class="btn btn-ghost" onclick="goStep(1)">← Retour</button>
+      <button class="btn btn-primary" onclick="goStep(3)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: CONTACTS -->
+  <div id="step-3" style="display:none">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Ajoutez vos contacts</h2>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:20px">Un numéro par ligne au format international (+33…)</p>
+
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <label class="form-label" style="margin:0">Liste de numéros</label>
+        <span id="contact-count" style="font-size:12px;color:var(--brand)">0 contacts</span>
+      </div>
+      <textarea class="input" id="contacts-raw" rows="10"
+        placeholder="+33612345678&#10;+33698765432&#10;+33611223344&#10;..."
+        oninput="countContacts()" style="font-family:monospace;font-size:13px"></textarea>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label class="form-label">Délai entre appels (secondes)</label>
+        <input class="input" type="number" id="call-delay" value="5" min="3" max="60">
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:24px">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Retour</button>
+      <button class="btn btn-primary" onclick="goStep(4)">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: SUMMARY -->
+  <div id="step-4" style="display:none">
+    <h2 style="font-size:16px;font-weight:700;margin-bottom:6px">Résumé de la campagne</h2>
+    <p style="font-size:13px;color:var(--text3);margin-bottom:20px">Vérifiez et lancez votre campagne.</p>
+
+    <div id="summary-card" class="card" style="padding:20px;margin-bottom:20px"></div>
+
+    <div style="display:flex;justify-content:space-between;gap:10px">
+      <button class="btn btn-ghost" onclick="goStep(3)">← Retour</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost" onclick="saveCampaign(false)">💾 Sauver brouillon</button>
+        <button class="btn btn-primary" onclick="saveCampaign(true)">🚀 Créer et lancer</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedType  = 'ai_agent';
+let selectedOffer = '';
+let currentStep   = 1;
+
+function selectType(t) {
+  selectedType = t;
+  ['ai','ivr'].forEach(k => {
+    const isSelected = (k === 'ai' && t === 'ai_agent') || (k === 'ivr' && t === 'ivr');
+    document.getElementById(`type-${k}`).style.borderColor = isSelected ? 'var(--brand)' : 'var(--border)';
+    document.getElementById(`type-${k}`).style.background  = isSelected ? 'rgba(34,197,94,.05)' : 'transparent';
+  });
+}
+
+function selectOffer(o) {
+  selectedOffer = o;
+  document.querySelectorAll('[id^="offer-"]').forEach(el => {
+    const isSelected = el.id === `offer-${o}`;
+    el.style.borderColor = isSelected ? 'var(--brand)' : 'var(--border)';
+    el.style.background  = isSelected ? 'rgba(34,197,94,.07)' : 'transparent';
+  });
+  const scripts = {
+    assurance_auto:   "Bonjour, je suis Sophie de AssurancePro. Je vous contacte au sujet de votre assurance auto. Votre contrat actuel correspond-il toujours à vos besoins ?",
+    assurance_sante:  "Bonjour, c'est Sophie d'AssurancePro. Je vous appelle pour vous présenter nos offres de complémentaire santé adaptées à votre profil.",
+    mutuelle:         "Bonjour, Sophie d'AssurancePro. Savez-vous que vous pourriez réduire votre cotisation mutuelle tout en améliorant vos remboursements ?",
+    immobilier:       "Bonjour, Sophie d'AssurancePro. Êtes-vous propriétaire ou locataire ? Nous avons des offres très compétitives pour l'assurance habitation.",
+    credit:           "Bonjour, c'est Sophie d'AssurancePro. Je vous contacte concernant nos solutions de financement. Avez-vous un projet en cours ?",
+  };
+  if (scripts[o]) document.getElementById('offer-script').value = scripts[o];
+}
+
+function countContacts() {
+  const lines = document.getElementById('contacts-raw').value
+    .split('\n').map(s => s.trim()).filter(s => s.length > 5);
+  document.getElementById('contact-count').textContent = `${lines.length} contact${lines.length>1?'s':''}`;
+}
+
+function goStep(n) {
+  if (n === 2 && !document.getElementById('camp-name').value.trim()) {
+    showToast('Entrez un nom pour la campagne', 'error'); return;
+  }
+  if (n === 4) buildSummary();
+
+  document.getElementById(`step-${currentStep}`).style.display = 'none';
+  document.getElementById(`step-${n}`).style.display = 'block';
+
+  // Update indicators
+  for (let i = 1; i <= 4; i++) {
+    const dot   = document.getElementById(`step-dot-${i}`);
+    const label = document.getElementById(`step-label-${i}`);
+    if (i < n) {
+      dot.style.background = 'rgba(34,197,94,.2)'; dot.style.color = 'var(--brand)';
+      dot.textContent = '✓';
+    } else if (i === n) {
+      dot.style.background = 'var(--brand)'; dot.style.color = '#fff';
+      dot.textContent = i;
+    } else {
+      dot.style.background = 'var(--surface2)'; dot.style.color = 'var(--text3)';
+      dot.textContent = i;
+    }
+    label.style.color = i <= n ? 'var(--text)' : 'var(--text3)';
+  }
+  currentStep = n;
+}
+
+function buildSummary() {
+  const name     = document.getElementById('camp-name').value;
+  const lines    = document.getElementById('contacts-raw').value.split('\n').filter(s=>s.trim().length>5);
+  const typeLabel = selectedType === 'ai_agent' ? '🤖 Agent IA' : '📋 IVR';
+  const OFFERS   = {assurance_auto:'🚗 Auto', assurance_sante:'❤️ Santé', mutuelle:'💊 Mutuelle', immobilier:'🏠 Immo', credit:'💳 Crédit', autre:'🎯 Autre'};
+
+  document.getElementById('summary-card').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+      <div class="card-sm" style="padding:14px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Nom</div>
+        <div style="font-weight:700">${escHtml(name)}</div>
+      </div>
+      <div class="card-sm" style="padding:14px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Type</div>
+        <div style="font-weight:700">${typeLabel}</div>
+      </div>
+      <div class="card-sm" style="padding:14px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Offre</div>
+        <div style="font-weight:700">${selectedOffer ? OFFERS[selectedOffer]||selectedOffer : '—'}</div>
+      </div>
+      <div class="card-sm" style="padding:14px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Contacts</div>
+        <div style="font-weight:700;font-size:24px;color:var(--brand)">${lines.length}</div>
+      </div>
+    </div>`;
+}
+
+async function saveCampaign(launch) {
+  const name     = document.getElementById('camp-name').value.trim();
+  const lines    = document.getElementById('contacts-raw').value
+    .split('\n').map(s=>s.trim()).filter(s=>s.length>5);
+  const delay    = parseInt(document.getElementById('call-delay').value) || 5;
+  const script   = document.getElementById('offer-script').value.trim();
+
+  if (!name)         { showToast('Nom requis', 'error'); return; }
+  if (!lines.length) { showToast('Ajoutez au moins un contact', 'error'); return; }
+
+  const payload = {
+    name, campaign_type: selectedType, offer_type: selectedOffer || null,
+    offer_script: script || null, contacts: lines,
+    delay_between_calls: delay,
+    description: document.getElementById('camp-desc').value.trim() || null,
+  };
+
+  const camp = await apiPost('/api/campaigns/', payload);
+  if (!camp) return;
+
+  if (launch) {
+    await apiPost(`/api/campaigns/${camp.id}/launch`, {});
+    showToast('Campagne créée et lancée !', 'success');
+  } else {
+    showToast('Brouillon sauvegardé', 'success');
+  }
+  setTimeout(() => location.href = '/campaigns', 800);
+}
+</script>
+{% endblock %}

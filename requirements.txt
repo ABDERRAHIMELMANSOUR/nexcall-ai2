@@ -1,0 +1,22 @@
+# ── Framework ─────────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+gunicorn==22.0.0
+
+# ── Base de données async ──────────────────────────────────────────
+sqlalchemy==2.0.30
+aiosqlite==0.20.0
+
+# ── Configuration ─────────────────────────────────────────────────
+python-dotenv==1.0.1
+pydantic==2.7.1
+pydantic-settings==2.2.1
+
+# ── HTTP / APIs ────────────────────────────────────────────────────
+httpx==0.27.0
+openai==1.30.1
+
+# ── Templating & fichiers statiques ───────────────────────────────
+jinja2==3.1.4
+python-multipart==0.0.9
+aiofiles==23.2.1

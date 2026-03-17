@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Leads — NexCall AI{% endblock %}
+{% block content %}
+<div style="padding:24px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <h1 style="font-size:22px;font-weight:800">Leads</h1>
+      <p style="font-size:13px;color:var(--text3);margin-top:2px">Prospects qualifiés par votre agent IA</p>
+    </div>
+    <a href="/api/leads/export/csv" class="btn btn-ghost">⬇ Exporter CSV</a>
+  </div>
+
+  <!-- Filters -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <select class="input" style="width:160px" id="filter-hot" onchange="loadLeads()">
+      <option value="">Tous les leads</option>
+      <option value="true">🔥 Leads chauds</option>
+      <option value="false">Leads froids</option>
+    </select>
+    <select class="input" style="width:160px" id="filter-contacted" onchange="loadLeads()">
+      <option value="">Tout statut</option>
+      <option value="false">À contacter</option>
+      <option value="true">Contactés</option>
+    </select>
+    <button class="btn btn-ghost btn-sm" onclick="loadLeads()">↻ Actualiser</button>
+  </div>
+
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="overflow-x:auto">
+      <table class="tbl">
+        <thead><tr>
+          <th>Téléphone</th><th>Nom</th><th>Service</th><th>Intention</th>
+          <th>Score</th><th>Statut</th><th>Contacté</th><th>Date</th><th></th>
+        </tr></thead>
+        <tbody id="leads-tbody"></tbody>
+      </table>
+    </div>
+    <div id="leads-pagination"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadLeads(page = 1) {
+  const hot = document.getElementById('filter-hot').value;
+  const con = document.getElementById('filter-contacted').value;
+  let url = `/api/leads/?page=${page}&limit=20`;
+  if (hot) url += `&is_hot=${hot}`;
+  if (con) url += `&contacted=${con}`;
+
+  const data = await apiGet(url);
+  if (!data) return;
+
+  const tbody = document.getElementById('leads-tbody');
+  if (!data.leads?.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--text3)">Aucun lead</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.leads.map(l => `
+    <tr>
+      <td style="font-family:monospace;font-size:12px;font-weight:600">${l.phone_number||'—'}</td>
+      <td style="font-size:13px">${l.name||'—'}</td>
+      <td><span class="badge badge-gray" style="font-size:10px">${l.service_interest||'—'}</span></td>
+      <td>${intentBadge(l.intent)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;min-width:100px">
+          <div class="score-bar" style="flex:1"><div class="score-fill" style="width:${l.qualification_score}%"></div></div>
+          <span style="font-size:11px;font-family:monospace;color:var(--text2);width:26px">${Math.round(l.qualification_score)}</span>
+        </div>
+      </td>
+      <td>${l.is_hot ? '<span class="badge badge-orange">🔥 Chaud</span>' : '<span class="badge badge-gray">Tiède</span>'}</td>
+      <td>${l.contacted ? '<span class="badge badge-green">✓ Oui</span>' : '<span class="badge badge-gray">Non</span>'}</td>
+      <td style="color:var(--text3);font-size:12px">${fmtDate(l.created_at)}</td>
+      <td>
+        ${!l.contacted ? `<button class="btn btn-ghost btn-xs" onclick="markContacted(${l.id})">✓ Contacté</button>` : ''}
+        <button class="btn btn-danger btn-xs" onclick="deleteLead(${l.id})" style="margin-left:4px">✕</button>
+      </td>
+    </tr>`).join('');
+
+  renderPagination('leads-pagination', data.total, page, 20, 'loadLeads');
+}
+
+async function markContacted(id) {
+  const r = await apiPatch(`/api/leads/${id}/contacted`);
+  if (r?.success) { showToast('Lead marqué contacté', 'success'); loadLeads(); }
+}
+async function deleteLead(id) {
+  if (!confirm('Supprimer ce lead ?')) return;
+  const r = await apiDel(`/api/leads/${id}`);
+  if (r) { showToast('Lead supprimé', 'info'); loadLeads(); }
+}
+
+loadLeads();
+</script>
+{% endblock %}

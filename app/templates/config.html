@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Configuration — NexCall AI{% endblock %}
+{% block content %}
+<div style="padding:24px;max-width:820px">
+  <div style="margin-bottom:24px">
+    <h1 style="font-size:22px;font-weight:800">Configuration</h1>
+    <p style="font-size:13px;color:var(--text3);margin-top:2px">Paramètres de l'agent IA et de l'intégration Ringover</p>
+  </div>
+
+  <!-- System Status -->
+  <div class="card" style="padding:18px;margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:700">⚡ Statut système</div>
+      <button class="btn btn-ghost btn-sm" onclick="testRingover()">Tester Ringover</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px" id="status-grid">
+      <div class="card-sm" style="padding:12px;display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--text3)" id="dot-ringover"></div>
+        <div><div style="font-size:11px;color:var(--text3)">Ringover</div><div style="font-size:12px;font-weight:600" id="st-ringover">—</div></div>
+      </div>
+      <div class="card-sm" style="padding:12px;display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--text3)" id="dot-openai"></div>
+        <div><div style="font-size:11px;color:var(--text3)">OpenAI</div><div style="font-size:12px;font-weight:600" id="st-openai">—</div></div>
+      </div>
+      <div class="card-sm" style="padding:12px;display:flex;align-items:center;gap:8px">
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--brand)" id="dot-api"></div>
+        <div><div style="font-size:11px;color:var(--text3)">API</div><div style="font-size:12px;font-weight:600">Opérationnelle</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Agent IA Config -->
+  <div class="card" style="padding:20px;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px">🤖 Agent IA</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label class="form-label">Nom de l'agent</label>
+        <input class="input" id="agent-name" placeholder="Sophie">
+      </div>
+      <div>
+        <label class="form-label">Nom de l'entreprise</label>
+        <input class="input" id="company-name" placeholder="AssurancePro">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
+      <div>
+        <label class="form-label">Langue</label>
+        <select class="input" id="agent-lang">
+          <option value="fr">🇫🇷 Français</option>
+          <option value="en">🇬🇧 English</option>
+          <option value="es">🇪🇸 Español</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Voix OpenAI</label>
+        <select class="input" id="agent-voice">
+          <option value="nova">nova (femme, naturel)</option>
+          <option value="alloy">alloy (neutre)</option>
+          <option value="echo">echo (homme)</option>
+          <option value="fable">fable (expressif)</option>
+          <option value="onyx">onyx (homme, grave)</option>
+          <option value="shimmer">shimmer (femme, doux)</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Température IA (0-1)</label>
+        <input class="input" type="number" id="agent-temp" value="0.7" min="0" max="1" step="0.1">
+      </div>
+    </div>
+
+    <div style="margin-bottom:14px">
+      <label class="form-label">Prompt système (personnalité de l'agent)</label>
+      <textarea class="input" id="agent-prompt" rows="5"
+        placeholder="Tu es Sophie, conseillère experte chez AssurancePro. Tu parles uniquement en français, avec un ton chaleureux et professionnel. Tu aides les clients à trouver la meilleure assurance selon leurs besoins…"></textarea>
+      <p style="font-size:11px;color:var(--text3);margin-top:4px">Ce prompt définit le comportement, la personnalité et les contraintes de votre agent IA.</p>
+    </div>
+
+    <div style="margin-bottom:18px">
+      <label class="form-label">Message d'accueil</label>
+      <textarea class="input" id="agent-greeting" rows="2"
+        placeholder="Bonjour, je suis Sophie de AssurancePro. Comment puis-je vous aider aujourd'hui ?"></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveAgentConfig()">💾 Sauvegarder la configuration</button>
+  </div>
+
+  <!-- Ringover Webhooks -->
+  <div class="card" style="padding:20px;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px">🔗 Webhooks Ringover</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:14px">Configurez ces URLs dans votre console Ringover : <strong>Paramètres → API & Intégrations → Webhooks</strong></p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="card-sm" style="padding:12px">
+        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:4px">URL Webhook principal</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <code style="flex:1;font-size:12px;color:var(--brand);word-break:break-all" id="wh-main">—</code>
+          <button class="btn btn-ghost btn-xs" onclick="copyUrl('wh-main')">📋</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ringover Numbers -->
+  <div class="card" style="padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:700">📱 Numéros Ringover</div>
+      <button class="btn btn-ghost btn-sm" onclick="loadNumbers()">↻ Actualiser</button>
+    </div>
+    <div id="numbers-list"><div style="color:var(--text3);font-size:13px">Cliquez sur Actualiser pour charger vos numéros.</div></div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadConfig() {
+  const [sys, agent] = await Promise.all([
+    apiGet('/api/config/system'),
+    apiGet('/api/config/agent'),
+  ]);
+
+  if (sys) {
+    const setDot = (id, ok) => {
+      document.getElementById(id).style.background = ok ? 'var(--brand)' : '#ef4444';
+    };
+    setDot('dot-ringover', sys.ringover_configured);
+    setDot('dot-openai',   sys.openai_configured);
+    document.getElementById('st-ringover').textContent = sys.ringover_configured ? 'Configuré ✓' : 'Non configuré';
+    document.getElementById('st-openai').textContent   = sys.openai_configured   ? 'Configuré ✓' : 'Non configuré';
+    document.getElementById('wh-main').textContent = window.location.origin + '/webhooks/ringover';
+  }
+
+  if (agent) {
+    document.getElementById('agent-name').value     = agent.name          || '';
+    document.getElementById('company-name').value   = agent.company_name  || '';
+    document.getElementById('agent-lang').value     = agent.language      || 'fr';
+    document.getElementById('agent-voice').value    = agent.voice         || 'nova';
+    document.getElementById('agent-temp').value     = agent.temperature   ?? 0.7;
+    document.getElementById('agent-prompt').value   = agent.system_prompt || '';
+    document.getElementById('agent-greeting').value = agent.greeting_text || '';
+  }
+}
+
+async function saveAgentConfig() {
+  const payload = {
+    name:          document.getElementById('agent-name').value.trim()    || 'Sophie',
+    company_name:  document.getElementById('company-name').value.trim()  || 'AssurancePro',
+    language:      document.getElementById('agent-lang').value,
+    voice:         document.getElementById('agent-voice').value,
+    temperature:   parseFloat(document.getElementById('agent-temp').value) || 0.7,
+    system_prompt: document.getElementById('agent-prompt').value.trim()   || null,
+    greeting_text: document.getElementById('agent-greeting').value.trim() || null,
+  };
+  const r = await apiPut('/api/config/agent', payload);
+  if (r) showToast('Configuration sauvegardée ✓', 'success');
+}
+
+async function testRingover() {
+  showToast('Test en cours…', 'info');
+  const r = await apiGet('/api/config/ringover/test');
+  if (r?.connected) {
+    document.getElementById('dot-ringover').style.background = 'var(--brand)';
+    document.getElementById('st-ringover').textContent = 'Connecté ✓';
+    showToast('Ringover connecté ✓', 'success');
+  } else {
+    showToast(r?.simulated ? 'Mode simulation (pas de clé API)' : 'Connexion échouée', 'error');
+  }
+}
+
+async function loadNumbers() {
+  const r = await apiGet('/api/config/ringover/numbers');
+  const el = document.getElementById('numbers-list');
+  if (!r?.numbers?.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px">Aucun numéro trouvé (vérifiez votre clé API Ringover)</div>';
+    return;
+  }
+  el.innerHTML = r.numbers.map(n => `
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span style="font-family:monospace">${n.number || JSON.stringify(n)}</span>
+      <span style="color:var(--text3)">${n.label || n.name || ''}</span>
+    </div>`).join('');
+}
+
+function copyUrl(id) {
+  const txt = document.getElementById(id).textContent;
+  navigator.clipboard?.writeText(txt).then(() => showToast('URL copiée !', 'success'));
+}
+
+loadConfig();
+</script>
+{% endblock %}
